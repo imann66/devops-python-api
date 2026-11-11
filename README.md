@@ -1,43 +1,69 @@
 # DevOps Python API
 
-A containerized REST API built with Python and Flask, featuring automated testing, security scanning, Docker image building, and Kubernetes deployment.
+A containerized REST API built with Python and Flask, demonstrating a practical DevOps workflow with automated testing, security scanning, continuous integration, Docker, and Kubernetes.
 
-This project demonstrates a practical DevOps workflow, from application development and version control to continuous integration and container orchestration.
+## Project Overview
+
+This project demonstrates the journey from application development to containerized deployment.
+
+The application is tested and scanned automatically through GitHub Actions. It is also deployed locally to a Kubernetes cluster using Kind.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A[Developer] --> B[GitHub Repository]
-    B --> C[GitHub Actions]
-    C --> D[Pytest]
-    D --> E[Bandit Security Scan]
-    E --> F[Docker Build]
-    F --> G[Trivy Image Scan]
-    G --> H[Docker Image]
-    H --> I[Kind Kubernetes Cluster]
-    I --> J[Kubernetes Deployment]
-    J --> K[Pod 1]
-    J --> L[Pod 2]
-    K --> M[Kubernetes Service]
-    L --> M
-    M --> N[Local Access via Port Forward]
+```text
+CI PIPELINE
+───────────
+
+Developer
+    │
+    ▼
+GitHub Repository
+    │
+    ▼
+GitHub Actions
+    │
+    ├── Pytest
+    ├── Bandit Security Scan
+    ├── Docker Build
+    └── Trivy Image Scan
+
+
+LOCAL KUBERNETES DEPLOYMENT
+───────────────────────────
+
+Docker Image
+    │
+    ▼
+Kind Kubernetes Cluster
+    │
+    ▼
+Kubernetes Deployment
+    │
+    ├── Pod 1 ── Flask API
+    │
+    └── Pod 2 ── Flask API
+            │
+            ▼
+     Kubernetes Service
+            │
+            ▼
+ localhost:8080 (Port Forward)
 ```
 
 ## Technology Stack
 
 | Category                | Technology     |
 | ----------------------- | -------------- |
-| Programming language    | Python 3.12    |
-| Web framework           | Flask          |
+| Programming Language    | Python         |
+| Web Framework           | Flask          |
 | Testing                 | Pytest         |
 | Containerization        | Docker         |
-| CI pipeline             | GitHub Actions |
-| Code security           | Bandit         |
-| Container security      | Trivy          |
-| Container orchestration | Kubernetes     |
+| CI                      | GitHub Actions |
+| Code Security           | Bandit         |
+| Container Security      | Trivy          |
+| Container Orchestration | Kubernetes     |
 | Local Kubernetes        | Kind           |
-| Version control         | Git and GitHub |
+| Version Control         | Git and GitHub |
 
 ## Project Structure
 
@@ -62,14 +88,14 @@ devops-python-api/
 └── README.md
 ```
 
-## Application Endpoints
+## API Endpoints
 
-| Method | Endpoint  | Description                       |
-| ------ | --------- | --------------------------------- |
-| GET    | `/`       | Returns an API welcome message    |
-| GET    | `/health` | Returns application health status |
+| Method | Endpoint  | Description                           |
+| ------ | --------- | ------------------------------------- |
+| GET    | `/`       | Returns an API status message         |
+| GET    | `/health` | Returns the application health status |
 
-Example response from `/`:
+Example response:
 
 ```json
 {
@@ -77,7 +103,7 @@ Example response from `/`:
 }
 ```
 
-Example response from `/health`:
+Health check response:
 
 ```json
 {
@@ -85,17 +111,7 @@ Example response from `/health`:
 }
 ```
 
-## Getting Started
-
-### Prerequisites
-
-Install the following tools:
-
-- Python 3.12
-- Git
-- Docker
-- kubectl
-- Kind
+## Run Locally
 
 ### 1. Clone the repository
 
@@ -104,7 +120,7 @@ git clone https://github.com/imann66/devops-python-api.git
 cd devops-python-api
 ```
 
-### 2. Create a virtual environment
+### 2. Create and activate a virtual environment
 
 Windows PowerShell:
 
@@ -125,26 +141,20 @@ pip install -r requirements-dev.txt
 python app/app.py
 ```
 
-The API will be available at:
+The application will be available at:
 
-- http://localhost:5000/
-- http://localhost:5000/health
+- `http://localhost:5000/`
+- `http://localhost:5000/health`
 
-### 5. Run automated tests
+### 5. Run tests
 
 ```powershell
 python -m pytest -v
 ```
 
-### 6. Run the Bandit security scan
-
-```powershell
-bandit -r app/
-```
-
 ## Docker
 
-### Build the Docker image
+### Build the image
 
 ```powershell
 docker build -t devops-python-api:latest .
@@ -156,41 +166,30 @@ docker build -t devops-python-api:latest .
 docker run --rm -p 5000:5000 devops-python-api:latest
 ```
 
-Test the API:
+Test the health endpoint:
 
 ```powershell
 Invoke-RestMethod http://localhost:5000/health
 ```
 
-### Scan the image with Trivy
-
-```powershell
-trivy image devops-python-api:latest
-```
-
 ## Continuous Integration
 
-The GitHub Actions workflow is located at:
+The GitHub Actions workflow automatically runs when code is pushed to the repository.
 
-`.github/workflows/ci.yml`
+The pipeline performs the following steps:
 
-The pipeline performs the following tasks:
+1. Runs automated tests with Pytest.
+2. Scans Python code using Bandit.
+3. Builds the Docker image.
+4. Scans the Docker image using Trivy.
 
-1. Checks out the source code.
-2. Sets up Python 3.12.
-3. Installs application and development dependencies.
-4. Runs automated tests with Pytest.
-5. Scans Python source code using Bandit.
-6. Builds the Docker image.
-7. Scans the Docker image using Trivy.
+The project was also tested by intentionally introducing a failing test and confirming that GitHub Actions stopped the pipeline. After fixing the test, the pipeline successfully passed again.
 
-The Docker security job runs after the test and code security job succeeds.
-
-The current Trivy configuration reports HIGH and CRITICAL findings without failing the pipeline (`exit-code: "0"`). This is an initial reporting configuration, not an enforcement gate.
+This verifies that the CI pipeline can detect broken application code.
 
 ## Kubernetes Deployment
 
-This project uses Kind to run a local Kubernetes cluster.
+This project uses Kind to run Kubernetes locally.
 
 ### 1. Create the cluster
 
@@ -216,115 +215,83 @@ docker build -t devops-python-api:latest .
 kind load docker-image devops-python-api:latest --name devops-lab
 ```
 
-The image is loaded directly into the local cluster, so a public image registry is not required for this workflow.
-
 ### 4. Deploy the application
 
 ```powershell
 kubectl apply -f kubernetes/deployment.yml
 ```
 
-Check the deployment:
+Verify the deployment:
 
 ```powershell
 kubectl get deployments
 kubectl get pods
 ```
 
-Wait for the rollout:
+The Deployment runs two replicas of the Flask application.
 
-```powershell
-kubectl rollout status deployment/devops-python-api
-```
-
-### 5. Create the Kubernetes Service
+### 5. Create the Service
 
 ```powershell
 kubectl apply -f kubernetes/service.yml
 ```
 
-Check the Service and its endpoints:
+Verify the Service:
 
 ```powershell
 kubectl get services
-kubectl get endpoints devops-python-api-service
 ```
 
 ### 6. Access the application
 
-Forward local port 8080 to the Service port 5000:
+Forward local port `8080` to the Kubernetes Service:
 
 ```powershell
 kubectl port-forward service/devops-python-api-service 8080:5000
 ```
 
-Keep this terminal running.
-
-Open another terminal and test:
+In another terminal, test the API:
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/
 Invoke-RestMethod http://localhost:8080/health
 ```
 
-### 7. Monitor the deployment
+## Health Checks
 
-```powershell
-kubectl get pods -o wide
-kubectl get deployments
-kubectl describe deployment devops-python-api
-kubectl get services
-```
+The Kubernetes Deployment uses both readiness and liveness probes.
 
-### 8. Update the deployment after changing code
+Both probes call the `/health` endpoint.
 
-Rebuild and reload the image:
+- **Readiness probe:** Determines whether the application is ready to receive traffic.
+- **Liveness probe:** Determines whether the application is still running correctly.
 
-```powershell
-docker build -t devops-python-api:latest .
-kind load docker-image devops-python-api:latest --name devops-lab
-```
-
-Restart the deployment:
-
-```powershell
-kubectl rollout restart deployment devops-python-api
-kubectl rollout status deployment devops-python-api
-```
-
-### 9. Remove the local Kubernetes cluster
-
-When finished:
-
-```powershell
-kind delete cluster --name devops-lab
-```
-
-This deletes the local cluster and its resources. It does not delete your GitHub repository.
+During deployment, a networking issue was identified because Flask was initially listening on `127.0.0.1`. The application was updated to listen on `0.0.0.0`, allowing Kubernetes health probes to reach the application through the Pod network.
 
 ## Key DevOps Concepts Demonstrated
 
-- Version control and source code management using Git and GitHub.
-- Automated testing and continuous integration with GitHub Actions.
-- Python static security analysis using Bandit.
-- Container image vulnerability scanning using Trivy.
-- Docker image creation and container execution.
-- Kubernetes Deployments and replica management.
-- Kubernetes Services and application networking.
-- Readiness and liveness probes.
-- Deployment rollout and troubleshooting.
+- Git and GitHub version control
+- Automated testing with Pytest
+- Continuous Integration with GitHub Actions
+- Python security scanning with Bandit
+- Container vulnerability scanning with Trivy
+- Docker containerization
+- Kubernetes Deployments and replica management
+- Kubernetes Services and networking
+- Readiness and liveness probes
+- Kubernetes rolling updates
+- Container and Kubernetes troubleshooting
 
 ## Future Improvements
 
-Potential next steps:
+Possible improvements for the next version include:
 
-- Use Gunicorn instead of Flask's built-in development server.
-- Publish Docker images to GitHub Container Registry.
-- Enforce security scan thresholds in CI.
-- Add automated deployment to Kubernetes.
-- Add application logging and monitoring.
-- Add resource requests and limits to Kubernetes workloads.
-- Introduce Helm for Kubernetes configuration management.
+- Use Gunicorn instead of Flask's development server.
+- Publish Docker images to a container registry.
+- Add automated Kubernetes deployment to the CI/CD pipeline.
+- Add Kubernetes resource requests and limits.
+- Add ConfigMaps and Secrets for application configuration.
+- Add centralized logging and monitoring.
 
 ## Author
 
