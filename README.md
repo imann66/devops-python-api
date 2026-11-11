@@ -152,6 +152,12 @@ The application will be available at:
 python -m pytest -v
 ```
 
+### 6. Run Bandit security scan
+
+```powershell
+python -m bandit -r app/
+```
+
 ## Docker
 
 ### Build the image
@@ -172,7 +178,7 @@ Test the health endpoint:
 Invoke-RestMethod http://localhost:5000/health
 ```
 
-## Continuous Integration
+## Continuous Integration and Security
 
 The GitHub Actions workflow automatically runs when code is pushed to the repository.
 
@@ -186,6 +192,20 @@ The pipeline performs the following steps:
 The project was also tested by intentionally introducing a failing test and confirming that GitHub Actions stopped the pipeline. After fixing the test, the pipeline successfully passed again.
 
 This verifies that the CI pipeline can detect broken application code.
+
+### Security Scan Exception
+
+During the Kubernetes deployment, the Flask application was updated to listen on `0.0.0.0` so it could be reached through the container and Kubernetes Pod network.
+
+Bandit identifies binding to all interfaces as rule `B104`. In this project, the configuration is intentional and required for container networking.
+
+The specific finding is suppressed using:
+
+```python
+app.run(host="0.0.0.0", port=5000)  # nosec B104
+```
+
+Only the `B104` finding on this line is suppressed. The rest of the Bandit security scan remains active.
 
 ## Kubernetes Deployment
 
@@ -228,6 +248,12 @@ kubectl get deployments
 kubectl get pods
 ```
 
+Wait for the deployment to complete:
+
+```powershell
+kubectl rollout status deployment/devops-python-api
+```
+
 The Deployment runs two replicas of the Flask application.
 
 ### 5. Create the Service
@@ -242,6 +268,12 @@ Verify the Service:
 kubectl get services
 ```
 
+To view the Pods connected to the Service, use:
+
+```powershell
+kubectl get endpointslices
+```
+
 ### 6. Access the application
 
 Forward local port `8080` to the Kubernetes Service:
@@ -250,6 +282,8 @@ Forward local port `8080` to the Kubernetes Service:
 kubectl port-forward service/devops-python-api-service 8080:5000
 ```
 
+Keep this terminal running.
+
 In another terminal, test the API:
 
 ```powershell
@@ -257,7 +291,21 @@ Invoke-RestMethod http://localhost:8080/
 Invoke-RestMethod http://localhost:8080/health
 ```
 
-## Health Checks
+Expected results:
+
+```text
+message
+-------
+DevOps API is running
+```
+
+```text
+status
+------
+healthy
+```
+
+## Health Checks and Troubleshooting
 
 The Kubernetes Deployment uses both readiness and liveness probes.
 
@@ -266,7 +314,19 @@ Both probes call the `/health` endpoint.
 - **Readiness probe:** Determines whether the application is ready to receive traffic.
 - **Liveness probe:** Determines whether the application is still running correctly.
 
-During deployment, a networking issue was identified because Flask was initially listening on `127.0.0.1`. The application was updated to listen on `0.0.0.0`, allowing Kubernetes health probes to reach the application through the Pod network.
+During the initial Kubernetes deployment, the Pods were running but failed their health probes. The issue was caused by Flask listening only on `127.0.0.1`, which prevented Kubernetes from reaching the application through the Pod network.
+
+The application was updated to listen on `0.0.0.0`, after which the Deployment successfully completed with two healthy replicas.
+
+This troubleshooting process involved:
+
+1. Inspecting Pod logs.
+2. Using `kubectl describe pod` to investigate failed probes.
+3. Identifying the application network binding issue.
+4. Updating the Flask host configuration.
+5. Rebuilding and loading the Docker image into Kind.
+6. Restarting the Kubernetes Deployment.
+7. Verifying two healthy Pods and successful API responses.
 
 ## Key DevOps Concepts Demonstrated
 
@@ -274,6 +334,7 @@ During deployment, a networking issue was identified because Flask was initially
 - Automated testing with Pytest
 - Continuous Integration with GitHub Actions
 - Python security scanning with Bandit
+- Security finding investigation and targeted exception handling
 - Container vulnerability scanning with Trivy
 - Docker containerization
 - Kubernetes Deployments and replica management
