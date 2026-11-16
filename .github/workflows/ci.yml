@@ -2,7 +2,6 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -10,6 +9,28 @@ jobs:
   test-and-security:
     name: Test and Code Security
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: devops_api_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d devops_api_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      TEST_DB_NAME: devops_api_test
 
     steps:
       - name: Checkout repository
@@ -26,10 +47,10 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: python -m pytest
+        run: python -m pytest -v
 
       - name: Run Bandit security scan
-        run: bandit -r app
+        run: python -m bandit -r app
 
   docker-security:
     name: Docker Build and Security Scan
