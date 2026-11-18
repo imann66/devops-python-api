@@ -678,8 +678,5 @@ Potential improvements include:
 - Add centralized logging and monitoring.
 - Improve Trivy vulnerability enforcement.
 
-## Author
-
-**Iman**
 
 GitHub: https://github.com/imann66
